@@ -1,0 +1,84 @@
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: demo-app
+  labels:
+    app.kubernetes.io/name: demo-app
+    app.kubernetes.io/instance: demo-app
+spec:
+  type: ClusterIP
+  ports:
+    - port: 3000
+      targetPort: 8080
+      protocol: TCP
+      name: http
+  selector:
+    app.kubernetes.io/name: demo-app
+    app.kubernetes.io/instance: demo-app
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: demo-app
+  labels:
+    app.kubernetes.io/name: demo-app
+    app.kubernetes.io/instance: demo-app
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: demo-app
+      app.kubernetes.io/instance: demo-app
+      app.kubernetes.io/component: demo-app
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: demo-app
+        app.kubernetes.io/instance: demo-app
+        app.kubernetes.io/component: demo-app
+    spec:
+      containers:
+      - name: main
+        image: "adiii717/demo-app:nodejs-demo-app"
+        imagePullPolicy: IfNotPresent
+        resources:
+          null
+        ports:
+        - name: http
+          containerPort: 3000
+          protocol: TCP
+        env:
+          - name: DEM_INFO
+            value: "Proxy Testing"
+      # imagePullSecrets:
+      # - name: demoapp-regcred
+
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: nodejs-ingress-2
+  annotations:
+    nginx.ingress.kubernetes.io/auth-response-headers: X-Auth-Request-User,X-Auth-Request-Email
+    nginx.ingress.kubernetes.io/auth-signin: https://demo.msarimz.eu/oauth2/start
+    nginx.ingress.kubernetes.io/auth-url: http://oauth2-proxy-example-oauth2-proxy-sample.default.svc.cluster.local/oauth2/auth
+    cert-manager.io/cluster-issuer: letsencrypt-issuer
+    nginx.ingress.kubernetes.io/server-snippet: |
+            large_client_header_buffers 4 32k;
+spec:
+  ingressClassName: nginx
+  tls:
+    - hosts:
+      - demo.msarimz.eu
+      secretName: demo.msarimz.eu
+  rules:
+  - host: demo.msarimz.eu
+    http:
+      paths:
+      - path: /
+        backend:
+          service:
+            name: demo-app
+            port:
+              number: 3000
+        pathType: ImplementationSpecific
