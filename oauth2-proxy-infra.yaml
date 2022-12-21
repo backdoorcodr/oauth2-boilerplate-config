@@ -1,0 +1,133 @@
+
+# Source: kubernetes/charts/oauth2-proxy/templates/serviceaccount.yaml
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  labels:
+    app: oauth2-proxy-sample
+    chart: oauth2-proxy-3.1.0
+    release: oauth2-proxy-example
+    heritage: Helm
+  name: oauth2-proxy-example-oauth2-proxy-sample
+---
+# Source: kubernetes/charts/oauth2-proxy/templates/configmap.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  labels:
+    app: oauth2-proxy-sample
+    chart: oauth2-proxy-3.1.0
+    heritage: Helm
+    release: oauth2-proxy-example
+  name: oauth2-proxy-example-oauth2-proxy-sample
+data:
+  oauth2_proxy.cfg: "cookie_secret=\"OQINaROshtE9TcZkNAm-5Zs2Pv3xaWytBmc5W7sPX7w=\"\ncookie_domains=\".msarimz.eu\"\nwhitelist_domains=[\".msarimz.eu\"]\n# only users with this domain will be let in\nemail_domains=[\"example.com\"]\n\nclient_id=\"oauth2-proxy\"\nclient_secret=\"b2F1dGgyLXByb3h5LWNsaWVudC1zZWNyZXQK\"\ncookie_secure=\"false\"\n\nredirect_url=\"http://demo.msarimz.eu/oauth2/callback\"\n\n# we don't want to proxy anything so pick a non-existent directory\nupstreams = [ \"file:///dev/null\" ]\n\n# return authenticated user to nginx\nset_xauthrequest = true\n# using http://demo.msarimz.eu/.well-known/openid-configuration oauth2-proxy will populate\n# login_url, redeem_url, and oidc_jwks_url\nprovider=\"oidc\"\noidc_issuer_url=\"http://demo.msarimz.eu/dex\""
+---
+# Source: kubernetes/charts/oauth2-proxy/templates/service.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: oauth2-proxy-sample
+    chart: oauth2-proxy-3.1.0
+    release: oauth2-proxy-example
+    heritage: Helm
+  name: oauth2-proxy-example-oauth2-proxy-sample
+spec:
+  type: ClusterIP
+  ports:
+    - port: 80
+      targetPort: http
+      protocol: TCP
+      name: http
+  selector:
+    app: oauth2-proxy-sample
+    release: oauth2-proxy-example
+---
+# Source: kubernetes/charts/oauth2-proxy/templates/deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: oauth2-proxy-sample
+    chart: oauth2-proxy-3.1.0
+    heritage: Helm
+    release: oauth2-proxy-example
+  name: oauth2-proxy-example-oauth2-proxy-sample
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: oauth2-proxy-sample
+      release: oauth2-proxy-example
+  template:
+    metadata:
+      annotations:
+        checksum/config: 5d8892a7b1d9eb03f9d59b787ce339b374fa2be51991e4e7533cb0a541984fac
+        checksum/config-emails: 01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b
+        checksum/secret: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+        checksum/google-secret: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+      labels:
+        app: oauth2-proxy-sample
+        release: "oauth2-proxy-example"
+    spec:
+      serviceAccountName: oauth2-proxy-example-oauth2-proxy-sample
+      containers:
+      - name: oauth2-proxy
+        image: "quay.io/pusher/oauth2_proxy:v6.1.1"
+        imagePullPolicy: IfNotPresent
+        args:
+          - --http-address=0.0.0.0:4180
+          - --config=/etc/oauth2_proxy/oauth2_proxy.cfg
+        ports:
+          - containerPort: 4180
+            name: http
+            protocol: TCP
+        resources:
+          {}
+        volumeMounts:
+        - mountPath: /etc/oauth2_proxy
+          name: configmain
+      volumes:
+      - configMap:
+          defaultMode: 420
+          name: oauth2-proxy-example-oauth2-proxy-sample
+        name: configmain
+      tolerations:
+        []
+---
+# Source: kubernetes/charts/oauth2-proxy/templates/ingress.yaml
+# oauth2-proxy.localtest.me
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: proxy-ingress
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-issuer
+    nginx.ingress.kubernetes.io/server-snippet: |
+      large_client_header_buffers 4 32k;
+spec:
+  ingressClassName: nginx
+  tls:
+    - hosts:
+      - demo.msarimz.eu
+      secretName: tls-demo-app
+  rules:
+  - host: demo.msarimz.eu
+    http:
+      paths:
+      - path: /oauth2/callback
+        backend:
+          service:
+            name: oauth2-proxy-example-oauth2-proxy-sample
+            port:
+              number: 80
+        pathType: ImplementationSpecific
+      - path: /oauth2/start
+        backend:
+          service:
+            name: oauth2-proxy-example-oauth2-proxy-sample
+            port:
+              number: 80
+        pathType: ImplementationSpecific
+---
