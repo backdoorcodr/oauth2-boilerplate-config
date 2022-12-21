@@ -1,12 +1,12 @@
 apiVersion: cert-manager.io/v1
 kind: Certificate
 metadata:
-  name: onedirection-app
+  name: demo-app
   namespace: default
 spec:
   dnsNames:
     - demo.msarimz.eu
-  secretName: letsencrypt-prod
+  secretName: tls-demo-app
   issuerRef:
-    name: letsencrypt-prod
+    name: letsencrypt-issuer
     kind: ClusterIssuer

@@ -2,10 +2,10 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: demo-app
+  name: principles-app
   labels:
-    app.kubernetes.io/name: demo-app
-    app.kubernetes.io/instance: demo-app
+    app.kubernetes.io/name: principles-app
+    app.kubernetes.io/instance: principles-app
 spec:
   type: ClusterIP
   ports:
@@ -14,45 +14,39 @@ spec:
       protocol: TCP
       name: http
   selector:
-    app.kubernetes.io/name: demo-app
-    app.kubernetes.io/instance: demo-app
+    app.kubernetes.io/name: principles-app
+    app.kubernetes.io/instance: principles-app
 ---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: demo-app
+  name: principles-app
   labels:
-    app.kubernetes.io/name: demo-app
-    app.kubernetes.io/instance: demo-app
+    app.kubernetes.io/name: principles-app
+    app.kubernetes.io/instance: principles-app
 spec:
   selector:
     matchLabels:
-      app.kubernetes.io/name: demo-app
-      app.kubernetes.io/instance: demo-app
-      app.kubernetes.io/component: demo-app
+      app.kubernetes.io/name: principles-app
+      app.kubernetes.io/instance: principles-app
+      app.kubernetes.io/component: principles-app
   template:
     metadata:
       labels:
-        app.kubernetes.io/name: demo-app
-        app.kubernetes.io/instance: demo-app
-        app.kubernetes.io/component: demo-app
+        app.kubernetes.io/name: principles-app
+        app.kubernetes.io/instance: principles-app
+        app.kubernetes.io/component: principles-app
     spec:
       containers:
       - name: main
-        image: "adiii717/demo-app:nodejs-demo-app"
-        imagePullPolicy: IfNotPresent
-        resources:
-          null
+        image: "testcontainers/helloworld"
+        imagePullPolicy: Always
         ports:
         - name: http
-          containerPort: 3000
+          containerPort: 8080
           protocol: TCP
-        env:
-          - name: DEM_INFO
-            value: "Proxy Testing"
-      # imagePullSecrets:
-      # - name: demoapp-regcred
-
+      imagePullSecrets:
+      - name: demoapp-regcred
 ---
 apiVersion: networking.k8s.io/v1
 kind: Ingress
@@ -70,7 +64,7 @@ spec:
   tls:
     - hosts:
       - demo.msarimz.eu
-      secretName: demo.msarimz.eu
+      secretName: tls-demo-app
   rules:
   - host: demo.msarimz.eu
     http:
@@ -78,7 +72,7 @@ spec:
       - path: /
         backend:
           service:
-            name: demo-app
+            name: principles-app
             port:
               number: 3000
         pathType: ImplementationSpecific
